@@ -1,7 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext as _
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class UserManager(BaseUserManager):
