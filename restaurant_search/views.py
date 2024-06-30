@@ -54,7 +54,7 @@ def get_all_restaurants_in_the_city(
             defaults={
                 "name": name,
                 "address": address,
-                "outdoor_images": list_of_images,
+                "images": list_of_images,
             },
         )
         exists_restaurants.append(restaurant)

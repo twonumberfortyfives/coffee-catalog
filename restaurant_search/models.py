@@ -18,7 +18,7 @@ class Restaurant(models.Model):
     name = models.CharField(max_length=100)
     address = models.CharField(max_length=100)
     opening_hours = models.TextField(default=None, blank=True, null=True)
-    outdoor_images = models.URLField(default=None, blank=True, null=True)
+    images = models.URLField(default=None, blank=True, null=True)
 
     class Meta:
         constraints = [UniqueConstraint(fields=["name", "address"], name="unique_restaurant")]
