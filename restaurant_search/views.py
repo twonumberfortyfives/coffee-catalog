@@ -38,14 +38,13 @@ def get_all_restaurants_in_the_city(
         unique_id = item.get("fsq_id")
         name = item.get("name")
         address = item.get("location", {}).get("formatted_address")
-        get_outdoor_images_url = f"https://api.foursquare.com/v3/places/{unique_id}/photos?classifications=outdoor"
-        outdoor_images_response = requests.get(get_outdoor_images_url, headers=headers)
-        outdoor_images_json = outdoor_images_response.json()
-        list_of_outdoor_images = [
+        images_url = f"https://api.foursquare.com/v3/places/{unique_id}/photos"
+        images_response = requests.get(images_url, headers=headers)
+        images_json = images_response.json()
+        list_of_images = [
             f"{image.get("prefix")}original{image.get("suffix")}"
-            for image in outdoor_images_json
+            for image in images_json
         ]
-        outdoor_images = list_of_outdoor_images
 
         if not unique_id or not name or not address:
             continue
@@ -55,7 +54,7 @@ def get_all_restaurants_in_the_city(
             defaults={
                 "name": name,
                 "address": address,
-                "outdoor_images": outdoor_images,
+                "outdoor_images": list_of_images,
             },
         )
         exists_restaurants.append(restaurant)
