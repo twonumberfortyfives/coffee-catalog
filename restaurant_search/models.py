@@ -22,3 +22,6 @@ class Restaurant(models.Model):
 
     class Meta:
         constraints = [UniqueConstraint(fields=["name", "address"], name="unique_restaurant")]
+
+    def __str__(self):
+        return f"{self.name} - {self.address}"

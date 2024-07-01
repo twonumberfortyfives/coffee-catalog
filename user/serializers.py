@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from user.models import Favourite
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,3 +37,9 @@ class EmailVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = ["token"]
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Favourite
+        fields = "__all__"

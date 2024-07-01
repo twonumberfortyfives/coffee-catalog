@@ -9,7 +9,8 @@ from rest_framework.reverse import reverse
 from rest_framework.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from user.serializers import UserSerializer, EmailVerificationSerializer
+from user.models import Favourite
+from user.serializers import UserSerializer, EmailVerificationSerializer, FavoriteSerializer
 from user.utils import Util
 
 
@@ -87,3 +88,8 @@ class VerifyEmail(GenericAPIView):
             return response.Response(
                 {"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class FavoriteListView(generics.ListAPIView, generics.CreateAPIView):
+    serializer_class = FavoriteSerializer
+    queryset = Favourite.objects.all()
