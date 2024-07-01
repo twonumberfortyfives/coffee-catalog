@@ -3,6 +3,9 @@ from django.db import models
 from django.utils.translation import gettext as _
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from coffee_catalog.settings import AUTH_USER_MODEL
+from restaurant_search.models import Restaurant
+
 
 class UserManager(BaseUserManager):
     """Define a model manager for User model with no username field."""

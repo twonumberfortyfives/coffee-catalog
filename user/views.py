@@ -1,7 +1,7 @@
 import jwt
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
-from rest_framework import generics, status, response
+from rest_framework import generics, status, response, viewsets
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated

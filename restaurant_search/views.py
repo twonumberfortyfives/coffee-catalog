@@ -8,6 +8,8 @@ from .models import Restaurant
 from .serializers import RestaurantListSerializer
 from restaurant_search.permissions import IsAuthorizedAndVerifiedOrNot
 from dotenv import load_dotenv
+import httpx
+
 
 load_dotenv()
 
@@ -24,7 +26,7 @@ def get_all_restaurants_in_the_city(
     }
 
     try:
-        response = requests.get(url, headers=headers)
+        response = httpx.get(url, headers=headers)
         response.raise_for_status()
     except requests.RequestException as e:
         return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
