@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthorizedAndVerifiedOrNot])
 def get_all_restaurants_in_the_city(
