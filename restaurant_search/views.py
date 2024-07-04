@@ -1,22 +1,32 @@
 import os
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework import status
-import httpx
-from .models import Restaurant
-from .serializers import RestaurantListSerializer
-from restaurant_search.permissions import IsAuthorizedAndVerifiedOrNot
-from dotenv import load_dotenv
+import time
+from concurrent.futures import ThreadPoolExecutor
 
-load_dotenv()
+import httpx
+from rest_framework import status
+from rest_framework.decorators import permission_classes, api_view
+from rest_framework.response import Response
+
+from restaurant_search.models import Image, Restaurant
+from restaurant_search.permissions import IsAuthorizedAndVerifiedOrNot
+from restaurant_search.serializers import RestaurantListSerializer, ImageSerializer
+
+
+def fetch_photo(images_url, headers):
+    try:
+        response = httpx.get(images_url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        print(f"Error fetching photo from {images_url}: {str(e)}")
+        return []
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthorizedAndVerifiedOrNot])
-def get_all_restaurants_in_the_city(
-    request, country, city, coffee_id: int = None
-) -> Response:
-    url = f"https://api.foursquare.com/v3/places/search?query=coffee&near={country}%2C%20{city}"
+def get_all_restaurants_in_the_city(request, country, city, coffee_id: int = None) -> Response:
+    start_time = time.time()
+    url = f"https://api.foursquare.com/v3/places/search?query=coffee&near={country}%2C%20{city}&limit=50"
     headers = {
         "accept": "application/json",
         "Authorization": os.environ.get("PLACES_API"),
@@ -32,33 +42,37 @@ def get_all_restaurants_in_the_city(
     results = response_json.get("results", [])
 
     exists_restaurants = []
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_url = {
+            executor.submit(fetch_photo, f"https://api.foursquare.com/v3/places/{item.get('fsq_id')}/photos", headers): item
+            for item in results
+            if item.get("fsq_id") and item.get("name") and item.get("location", {}).get("formatted_address")
+        }
+        for future in future_to_url:
+            item = future_to_url[future]
+            try:
+                images_json = future.result()
+                image_urls = [
+                    f"{image.get('prefix')}original{image.get('suffix')}" for image in images_json
+                ]
 
-    for item in results:
-        unique_id = item.get("fsq_id")
-        name = item.get("name")
-        address = item.get("location", {}).get("formatted_address")
+                restaurant, created = Restaurant.objects.get_or_create(
+                    unique_id=item.get("fsq_id"),
+                    defaults={
+                        "name": item.get("name"),
+                        "address": item.get("location", {}).get("formatted_address"),
+                    },
+                )
 
-        # Fetching images
-        images_url = f"https://api.foursquare.com/v3/places/{unique_id}/photos"
-        images_response = httpx.get(images_url, headers=headers)
-        images_json = images_response.json()
-        list_of_images = [
-            f"{image.get('prefix')}original{image.get('suffix')}" for image in images_json
-        ]
+                restaurant.images.clear()
+                for url in image_urls:
+                    image, _ = Image.objects.get_or_create(url=url)
+                    serializer = ImageSerializer(image)
+                    restaurant.images.add(image)
 
-        if not unique_id or not name or not address:
-            continue
-
-        # Use get_or_create to handle existing and new restaurants
-        restaurant, created = Restaurant.objects.get_or_create(
-            unique_id=unique_id,
-            defaults={
-                "name": name,
-                "address": address,
-                "images": list_of_images,
-            },
-        )
-        exists_restaurants.append(restaurant)
+                exists_restaurants.append(restaurant)
+            except Exception as e:
+                print(f"Error processing restaurant {item.get('name')}: {str(e)}")
 
     serializer = RestaurantListSerializer(exists_restaurants, many=True)
 
@@ -68,4 +82,7 @@ def get_all_restaurants_in_the_city(
         ]
         return Response(retrieve_restaurant, status=status.HTTP_200_OK)
 
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Elapsed time: {elapsed_time}")
     return Response(serializer.data, status=status.HTTP_200_OK)

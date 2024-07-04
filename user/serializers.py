@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 from user.models import Favourite
+from restaurant_search.serializers import RestaurantListSerializer
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -42,4 +44,19 @@ class EmailVerificationSerializer(serializers.ModelSerializer):
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Favourite
-        fields = "__all__"
+        fields = ("id", "user", "restaurant")
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Favourite.objects.all(),
+                fields=("user", "restaurant"),
+            )
+        ]
+
+
+class FavouriteListSerializer(serializers.ModelSerializer):
+    restaurant = RestaurantListSerializer(read_only=True)
+
+    class Meta:
+        model = Favourite
+        fields = ("id", "user", "restaurant")
+

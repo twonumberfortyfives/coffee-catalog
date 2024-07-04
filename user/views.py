@@ -10,7 +10,7 @@ from rest_framework.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from user.models import Favourite
-from user.serializers import UserSerializer, EmailVerificationSerializer, FavoriteSerializer
+from user.serializers import UserSerializer, EmailVerificationSerializer, FavoriteSerializer, FavouriteListSerializer
 from user.utils import Util
 
 
@@ -93,3 +93,19 @@ class VerifyEmail(GenericAPIView):
 class FavoriteListView(generics.ListAPIView, generics.CreateAPIView):
     serializer_class = FavoriteSerializer
     queryset = Favourite.objects.all()
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        queryset = self.queryset.select_related("user", "restaurant")
+        return queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return FavouriteListSerializer
+        elif self.request.method == "POST":
+            return FavoriteSerializer
+        return FavoriteSerializer
+
