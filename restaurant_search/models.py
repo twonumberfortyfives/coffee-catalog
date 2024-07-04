@@ -5,6 +5,8 @@ from django.db import models
 from django.db.models import UniqueConstraint
 from django.utils.text import slugify
 
+from coffee_catalog.settings import AUTH_USER_MODEL
+
 
 def restaurant_image_file_path(instance, filename):
     _, extension = os.path.splitext(filename)
@@ -32,3 +34,9 @@ class Restaurant(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.address}"
+
+
+class Comment(models.Model):
+    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="comments")
+    content = models.TextField(max_length=1000)
