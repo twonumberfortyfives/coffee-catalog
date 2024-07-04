@@ -9,7 +9,8 @@ from rest_framework.reverse import reverse
 from rest_framework.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from user.serializers import UserSerializer, EmailVerificationSerializer
+from user.models import Favourite
+from user.serializers import UserSerializer, EmailVerificationSerializer, FavoriteSerializer, FavouriteListSerializer
 from user.utils import Util
 
 
@@ -87,3 +88,33 @@ class VerifyEmail(GenericAPIView):
             return response.Response(
                 {"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class FavoriteListView(generics.ListAPIView, generics.CreateAPIView):
+    serializer_class = FavoriteSerializer
+    queryset = Favourite.objects.all()
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        queryset = self.queryset.select_related("user", "restaurant")
+        return queryset.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return FavouriteListSerializer
+        elif self.request.method == "POST":
+            return FavoriteSerializer
+        return FavoriteSerializer
+
+
+class FavouriteRetrieveView(generics.RetrieveAPIView, generics.DestroyAPIView):
+    queryset = Favourite.objects.all()
+    permission_classes = (IsAuthenticated,)
+    serializer_class = FavouriteListSerializer
+
+    def get_queryset(self):
+        queryset = self.queryset.select_related("user", "restaurant")
+        return queryset.filter(user=self.request.user)
