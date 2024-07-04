@@ -19,10 +19,12 @@ from django.contrib import admin
 from django.urls import path
 from django.urls.conf import include
 
+from debug_toolbar.toolbar import debug_toolbar_urls
+
 from coffee_catalog import settings
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/user/", include("user.urls", namespace="user")),
     path("api/main/", include("restaurant_search.urls", namespace="main")),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + debug_toolbar_urls()

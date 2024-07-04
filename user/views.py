@@ -109,3 +109,12 @@ class FavoriteListView(generics.ListAPIView, generics.CreateAPIView):
             return FavoriteSerializer
         return FavoriteSerializer
 
+
+class FavouriteRetrieveView(generics.RetrieveAPIView, generics.DestroyAPIView):
+    queryset = Favourite.objects.all()
+    permission_classes = (IsAuthenticated,)
+    serializer_class = FavouriteListSerializer
+
+    def get_queryset(self):
+        queryset = self.queryset.select_related("user", "restaurant")
+        return queryset.filter(user=self.request.user)

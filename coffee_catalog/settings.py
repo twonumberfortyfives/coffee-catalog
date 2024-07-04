@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     "user",
     "restaurant_search",
     "corsheaders",
-    "adrf"
+    "adrf",
+    "debug_toolbar",
 ]
 
 MIDDLEWARE = [
@@ -60,7 +61,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = "coffee_catalog.urls"
@@ -166,4 +167,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+]
+
+INTERNAL_IPS = [
+    "127.0.0.1",
 ]
