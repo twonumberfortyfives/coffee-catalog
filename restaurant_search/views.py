@@ -1,88 +1,100 @@
-import os
+import aiohttp
+import asyncio
 import time
-from concurrent.futures import ThreadPoolExecutor
-
-import httpx
-from rest_framework import status
-from rest_framework.decorators import permission_classes, api_view
+import os
+from rest_framework.decorators import permission_classes
+from adrf.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
+from asgiref.sync import sync_to_async  # Import sync_to_async
+from .models import Restaurant, Image
+from .serializers import RestaurantListSerializer, ImageSerializer
+from .permissions import IsAuthorizedAndVerifiedOrNot
 
-from restaurant_search.models import Image, Restaurant
-from restaurant_search.permissions import IsAuthorizedAndVerifiedOrNot
-from restaurant_search.serializers import RestaurantListSerializer, ImageSerializer
 
-
-def fetch_photo(images_url, headers):
+async def fetch_images(session, fsq_id):
     try:
-        response = httpx.get(images_url, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except httpx.RequestError as e:
-        print(f"Error fetching photo from {images_url}: {str(e)}")
-        return []
+        base_url = f"https://api.foursquare.com/v3/places/{fsq_id}/photos"
+        async with session.get(base_url) as response:
+            response.raise_for_status()
+            return await response.json()
+    except aiohttp.ClientError as e:
+        print(f"Image request failed for fsq_id {fsq_id}: {e}")
+        return None
+
+
+async def fetch_restaurants(session, country, city):
+    try:
+        base_url = f"https://api.foursquare.com/v3/places/search?query=coffee&near={country}%2C%20{city}&limit=50"
+        async with session.get(base_url) as response:
+            response.raise_for_status()
+            return await response.json()
+    except aiohttp.ClientError as e:
+        print(f"Restaurant request failed: {e}")
+        return None
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthorizedAndVerifiedOrNot])
-def get_all_restaurants_in_the_city(request, country, city, coffee_id: int = None) -> Response:
+async def get_all_restaurants_in_the_city(request, country, city, coffee_id: int = None) -> Response:
     start_time = time.time()
-    url = f"https://api.foursquare.com/v3/places/search?query=coffee&near={country}%2C%20{city}&limit=50"
     headers = {
         "accept": "application/json",
         "Authorization": os.environ.get("PLACES_API"),
     }
+    restaurant_to_serialize = []
 
-    try:
-        response = httpx.get(url, headers=headers)
-        response.raise_for_status()
-    except httpx.RequestError as e:
-        return Response({"error": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+    async with aiohttp.ClientSession(headers=headers) as session:
+        # Fetch restaurant data
+        response_json = await fetch_restaurants(session, country, city)
+        if response_json is None:
+            return Response({"error": "Failed to fetch restaurant data"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    response_json = response.json()
-    results = response_json.get("results", [])
+        # Collect fsq_ids
+        fsq_ids = [item["fsq_id"] for item in response_json.get("results", [])]
 
-    exists_restaurants = []
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_url = {
-            executor.submit(fetch_photo, f"https://api.foursquare.com/v3/places/{item.get('fsq_id')}/photos", headers): item
-            for item in results
-            if item.get("fsq_id") and item.get("name") and item.get("location", {}).get("formatted_address")
-        }
-        for future in future_to_url:
-            item = future_to_url[future]
-            try:
-                images_json = future.result()
-                image_urls = [
-                    f"{image.get('prefix')}original{image.get('suffix')}" for image in images_json
-                ]
+        # Fetch all images concurrently
+        image_tasks = [fetch_images(session, fsq_id) for fsq_id in fsq_ids]
+        images_responses = await asyncio.gather(*image_tasks)
 
-                restaurant, created = Restaurant.objects.get_or_create(
-                    unique_id=item.get("fsq_id"),
-                    defaults={
-                        "name": item.get("name"),
-                        "address": item.get("location", {}).get("formatted_address"),
-                    },
+        for index, item in enumerate(response_json["results"]):
+            images_json = images_responses[index]
+            if images_json is None:
+                continue
+
+            # Use sync_to_async for ORM operations
+            restaurant, created = await sync_to_async(Restaurant.objects.update_or_create)(
+                unique_id=item["fsq_id"],
+                defaults={
+                    "name": item["name"],
+                    "address": item.get("location", {}).get("formatted_address"),
+                    "opening_hours": item.get("closed_bucket"),
+                }
+            )
+
+            # Clear images for the restaurant asynchronously
+            await sync_to_async(restaurant.images.clear)()
+
+            for image_data in images_json:
+                image_url = image_data.get("prefix") + "original" + image_data.get("suffix")
+                image_instance, _ = await sync_to_async(Image.objects.get_or_create)(
+                    url=image_url
                 )
+                ImageSerializer(instance=image_instance)
+                # Add image to restaurant's images
+                await sync_to_async(restaurant.images.add)(image_instance)
 
-                restaurant.images.clear()
-                for url in image_urls:
-                    image, _ = Image.objects.get_or_create(url=url)
-                    serializer = ImageSerializer(image)
-                    restaurant.images.add(image)
+            restaurant_to_serialize.append(restaurant)
 
-                exists_restaurants.append(restaurant)
-            except Exception as e:
-                print(f"Error processing restaurant {item.get('name')}: {str(e)}")
+    # Serialize the list of restaurants outside the async context
+    serialized_data = await sync_to_async(lambda: RestaurantListSerializer(restaurant_to_serialize, many=True).data)()
 
-    serializer = RestaurantListSerializer(exists_restaurants, many=True)
+    # Retrieving the exact restaurant
 
-    if coffee_id is not None:
-        retrieve_restaurant = [
-            item for item in serializer.data if item.get("id") == coffee_id
-        ]
-        return Response(retrieve_restaurant, status=status.HTTP_200_OK)
+    if coffee_id:
+        restaurant_to_retrieve = [item for item in serialized_data if item.get("id") == coffee_id]
+        return Response(restaurant_to_retrieve, status.HTTP_200_OK)
 
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    print(f"Elapsed time: {elapsed_time}")
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    total_time = time.time() - start_time
+    print(f"Total time: {total_time} seconds")
+    return Response(serialized_data, status=status.HTTP_200_OK)

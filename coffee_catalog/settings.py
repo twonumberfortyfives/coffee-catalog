@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "user",
     "restaurant_search",
     "corsheaders",
+    "adrf"
 ]
 
 MIDDLEWARE = [
