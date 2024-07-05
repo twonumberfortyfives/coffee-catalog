@@ -5,11 +5,12 @@ import os
 from rest_framework.decorators import permission_classes
 from adrf.decorators import api_view
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from asgiref.sync import sync_to_async  # Import sync_to_async
-from .models import Restaurant, Image
-from .serializers import RestaurantListSerializer, ImageSerializer
+from .models import Restaurant, Image, Comment
+from .serializers import RestaurantListSerializer, ImageSerializer, CommentListSerializer
 from .permissions import IsAuthorizedAndVerifiedOrNot
+from rest_framework.permissions import IsAuthenticated
 
 
 async def fetch_images(session, fsq_id):
@@ -98,3 +99,16 @@ async def get_all_restaurants_in_the_city(request, country, city, coffee_id: int
     total_time = time.time() - start_time
     print(f"Total time: {total_time} seconds")
     return Response(serialized_data, status=status.HTTP_200_OK)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentListSerializer
+    permission_classes = (IsAuthenticated,)
+
+    def get_queryset(self):
+        queryset = self.queryset.filter(user=self.request.user).select_related("restaurant", "user")
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
