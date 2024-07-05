@@ -10,6 +10,7 @@ from asgiref.sync import sync_to_async  # Import sync_to_async
 from .models import Restaurant, Image, Comment
 from .serializers import RestaurantListSerializer, ImageSerializer, CommentListSerializer
 from .permissions import IsAuthorizedAndVerifiedOrNot
+from rest_framework.permissions import IsAuthenticated
 
 
 async def fetch_images(session, fsq_id):
@@ -103,9 +104,10 @@ async def get_all_restaurants_in_the_city(request, country, city, coffee_id: int
 class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentListSerializer
+    permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
-        queryset = self.queryset.filter(user=self.request.user)
+        queryset = self.queryset.filter(user=self.request.user).select_related("restaurant", "user")
         return queryset
 
     def perform_create(self, serializer):
