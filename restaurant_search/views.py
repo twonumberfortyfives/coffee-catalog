@@ -167,7 +167,7 @@ def retrieve_the_place(request, pk: int) -> Response:
         try:
             unique_name = review.get("name", None)
             author_name = review.get("authorAttribution", {}).get("displayName", None)
-            text = review.get("text", None)
+            text = review.get("text", None).get("text", None)
             created_at = review.get("relativePublishTimeDescription", None)
             rating = review.get("rating", None)
 
