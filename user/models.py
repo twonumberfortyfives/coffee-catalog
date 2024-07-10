@@ -59,16 +59,3 @@ class User(AbstractUser):
             "refresh": str(refresh),
             "refresh": str(refresh.access_token),
         }
-
-
-class Favourite(models.Model):
-    user = models.ForeignKey(AUTH_USER_MODEL, related_name="favourites", on_delete=models.CASCADE)
-    restaurant = models.ForeignKey(Restaurant, related_name="favourites", on_delete=models.CASCADE)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "restaurant"],
-                name="unique_favourite",
-            )
-        ]

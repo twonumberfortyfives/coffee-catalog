@@ -1,15 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-
-from restaurant_search.views import get_all_restaurants_in_the_city, CommentViewSet
+from restaurant_search.views import get_nearby_places, retrieve_the_place
 
 app_name = "main"
 
 router = DefaultRouter()
-router.register('comments', CommentViewSet)
 
 urlpatterns = [
-    path("restaurants/<str:country>/<str:city>/", get_all_restaurants_in_the_city, name='closest-restaurants'),
-    path("restaurants/<str:country>/<str:city>/<int:coffee_id>/", get_all_restaurants_in_the_city, name="closest-restaurant-detail"),
+    path("get-restaurants/<str:location>/", get_nearby_places, name="get-restaurants"),
+    path("retrieve-restaurant/<int:pk>/", retrieve_the_place, name="restaurant-retrieve"),
     path("", include(router.urls)),
 ]
