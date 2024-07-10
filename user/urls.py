@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from user.views import ManageUserView, VerifyEmail, SignUp, FavouriteViewSet
+from user.views import ManageUserView, VerifyEmail, SignUp, FavouriteViewSet, CreateReview
 
 app_name = "user"
 
@@ -21,5 +21,6 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     path("email-verify/", VerifyEmail.as_view(), name="email-verify"),
+    path("create-review/", CreateReview.as_view(), name="create-review"),
     path("", include(router.urls)),
 ]

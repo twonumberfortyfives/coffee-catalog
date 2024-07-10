@@ -1,14 +1,19 @@
+from datetime import datetime
+
 import jwt
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import generics, status, response, viewsets
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.decorators import api_view
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.reverse import reverse
 from rest_framework.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from restaurant_search.models import Review
+from restaurant_search.serializers import ReviewListSerializer
 from user.models import Favourite
 from user.serializers import UserSerializer, EmailVerificationSerializer, FavouriteListSerializer
 from user.utils import Util
@@ -101,3 +106,18 @@ class FavouriteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = self.queryset.filter(user=self.request.user).select_related("user", "restaurant")
         return queryset
+
+
+class CreateReview(generics.CreateAPIView):
+    serializer_class = ReviewListSerializer
+    queryset = Review.objects.all()
+    permission_classes = (IsAuthenticated,)
+
+    def perform_create(self, serializer):
+        full_name = f"{self.request.user.first_name} {self.request.user.last_name}"
+        time_today = f"{datetime.today()}"
+        serializer.save(
+            unique_name=self.request.user,
+            author_name=full_name,
+            created_at=time_today,
+        )
