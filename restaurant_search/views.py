@@ -67,7 +67,7 @@ def get_nearby_places(request, location: str) -> Response:
 
     data = {
         "includedTypes": ["cafe"],
-        "maxResultCount": 10,
+        "maxResultCount": 20,
         "locationRestriction": {
             "circle": {
                 "center": {
@@ -76,7 +76,7 @@ def get_nearby_places(request, location: str) -> Response:
                 },
                 "radius": 5000.0
             }
-        }
+        },
     }
 
     try:
@@ -99,7 +99,7 @@ def get_nearby_places(request, location: str) -> Response:
                 google_url = place.get("googleMapsUri", None)
                 website_url = place.get("websiteUri", None)
                 total_users_ratings = place.get("userRatingCount", None)
-                name = place.get("displayName", None)
+                name = place.get("displayName", None).get("text", None)
                 open_now = place.get("currentOpeningHours", {}).get("openNow", None)
                 opening_hours_weekdays = place.get("currentOpeningHours", {}).get("weekdayDescriptions", None)
 
