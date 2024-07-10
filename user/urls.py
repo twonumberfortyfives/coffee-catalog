@@ -6,9 +6,13 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from user.views import ManageUserView, VerifyEmail, SignUp
+from user.views import ManageUserView, VerifyEmail, SignUp, FavouriteViewSet
 
 app_name = "user"
+
+router = DefaultRouter()
+router.register("my-favourites", FavouriteViewSet, basename="favourites")
+
 
 urlpatterns = [
     path("me/", ManageUserView.as_view(), name="my_info"),
@@ -17,4 +21,5 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     path("email-verify/", VerifyEmail.as_view(), name="email-verify"),
+    path("", include(router.urls)),
 ]

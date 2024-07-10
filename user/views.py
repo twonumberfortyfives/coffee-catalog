@@ -1,7 +1,7 @@
 import jwt
 from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
-from rest_framework import generics, status, response
+from rest_framework import generics, status, response, viewsets
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -9,7 +9,8 @@ from rest_framework.reverse import reverse
 from rest_framework.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from user.serializers import UserSerializer, EmailVerificationSerializer
+from user.models import Favourite
+from user.serializers import UserSerializer, EmailVerificationSerializer, FavouriteListSerializer
 from user.utils import Util
 
 
@@ -87,3 +88,12 @@ class VerifyEmail(GenericAPIView):
             return response.Response(
                 {"error": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST
             )
+
+
+class FavouriteViewSet(viewsets.ModelViewSet):
+    serializer_class = FavouriteListSerializer
+    queryset = Favourite.objects.all()
+    permission_classes = (IsAuthenticated,)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
