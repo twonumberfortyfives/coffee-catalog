@@ -1,4 +1,3 @@
-import datetime
 import time
 
 from rest_framework.response import Response
@@ -7,7 +6,7 @@ from rest_framework import status
 import requests
 import os
 from geopy.geocoders import Nominatim
-from .models import Restaurant, Review
+from .models import Restaurant, Review, Image
 from dotenv import load_dotenv
 
 from .serializers import RestaurantListSerializer, RestaurantDetailSerializer
@@ -104,7 +103,7 @@ def get_nearby_places(request, location: str) -> Response:
                 open_now = place.get("currentOpeningHours", {}).get("openNow", None)
                 opening_hours_weekdays = place.get("currentOpeningHours", {}).get("weekdayDescriptions", None)
 
-                restaurant, created = Restaurant.objects.get_or_create(
+                restaurant, created = Restaurant.objects.update_or_create(
                     unique_id=unique_id,
                     defaults={
                         'phone_number': phone_number,
@@ -127,23 +126,6 @@ def get_nearby_places(request, location: str) -> Response:
                     restaurant.main_photo = main_photo_url
                     restaurant.save()
 
-                for review in place.get("reviews", []):
-                    review_author = review.get("authorAttribution", {}).get("displayName", None)
-                    review_text = review.get("text", None)
-                    review_rating = review.get("rating", None)
-                    review_created_at = review.get("relativePublishTimeDescription", None)
-                    review_unique_name = review.get("name", None)
-
-                    Review.objects.get_or_create(
-                        restaurant=restaurant,
-                        author_name=review_author,
-                        unique_name=review_unique_name,
-                        defaults={
-                            'text': review_text,
-                            'rating': review_rating,
-                            'created_at': review_created_at
-                        }
-                    )
                 array_of_restaurants_to_serialize.append(restaurant)
             except KeyError as key_err:
                 print(f"KeyError: {key_err}. Missing key in place data. Continuing to next place.")
@@ -153,18 +135,6 @@ def get_nearby_places(request, location: str) -> Response:
         print(f"{end - start} seconds")
         return Response(restaurants_serializer.data, status=status.HTTP_200_OK)
 
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-        return Response({'error': 'HTTP error occurred', 'details': str(http_err)},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    except requests.exceptions.RequestException as req_err:
-        print(f"Request exception occurred: {req_err}")
-        return Response({'error': 'Request exception occurred', 'details': str(req_err)},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    except ValueError as json_err:
-        print(f"Error parsing JSON: {json_err}")
-        return Response({'error': 'Error parsing JSON', 'details': str(json_err)},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except Exception as err:
         print(f"An error occurred: {err}")
         return Response({'error': 'An unknown error occurred', 'details': str(err)},
@@ -173,23 +143,66 @@ def get_nearby_places(request, location: str) -> Response:
 
 @api_view(["GET"])
 def retrieve_the_place(request, pk: int) -> Response:
+    start = time.time()
+
     restaurant = Restaurant.objects.get(pk=pk)
-    #
-    # headers_to_retrieve = {
-    #     'Content-Type': 'application/json',
-    #     'X-Goog-Api-Key': api_key,
-    #     'X-Goog-FieldMask': "*",
-    # }
-    #
-    # url = f"https://places.googleapis.com/v1/places/{restaurant.unique_id}"
-    #
-    # response = requests.get(url, headers=headers_to_retrieve)
-    # response.raise_for_status()
-    # response.encoding = "utf-8"
-    #
-    # response_json = response.json()
-    # for review in response_json.get("reviews", []):
-    #     if review:
-    #         print(review)
+
+    headers_to_retrieve = {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': api_key,
+        'X-Goog-FieldMask': "*",
+    }
+
+    url = f"https://places.googleapis.com/v1/places/{restaurant.unique_id}"
+
+    response = requests.get(url, headers=headers_to_retrieve)
+    response.raise_for_status()
+    response.encoding = "utf-8"
+
+    response_json = response.json()
+
+    array_of_images = []
+
+    for review in response_json.get("reviews", []):
+        try:
+            unique_name = review.get("name", None)
+            author_name = review.get("authorAttribution", {}).get("displayName", None)
+            text = review.get("text", None)
+            created_at = review.get("relativePublishTimeDescription", None)
+            rating = review.get("rating", None)
+
+            Review.objects.update_or_create(
+                unique_name=unique_name,
+                defaults={
+                    'restaurant': restaurant,
+                    'author_name': author_name,
+                    'text': text,
+                    'created_at': created_at,
+                    'rating': rating,
+                }
+            )
+        except Exception as err:
+            print(f"An error occurred: {err}")
+            continue
+
+    for photo in response_json.get("photos", []):
+        if photo:
+            try:
+                url = get_photos(photo["name"])
+                contrib_url = photo.get("authorAttributions", [{}])[0].get("uri", None)
+                image = Image.objects.update_or_create(
+                    contrib_url=contrib_url,
+                    defaults={
+                        'restaurant': restaurant,
+                        'url': url
+                    }
+                )
+                array_of_images.append(image)
+            except Exception as e:
+                print(f"Error processing photo: {e}")
+
     serializer = RestaurantDetailSerializer(restaurant)
+
+    end = time.time()
+    print(f"{end - start} seconds")
     return Response(serializer.data, status=status.HTTP_200_OK)

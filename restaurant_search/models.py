@@ -3,6 +3,7 @@ from django.db.models import UniqueConstraint
 
 
 class Image(models.Model):
+    contrib_url = models.CharField(max_length=255, null=True, blank=True)
     url = models.URLField(max_length=1000)
     restaurant = models.ForeignKey("Restaurant", related_name="images", blank=True, null=True, on_delete=models.CASCADE)
 
@@ -21,7 +22,7 @@ class Review(models.Model):
     author_name = models.CharField(max_length=255, null=True, blank=True)
     text = models.TextField(max_length=2000, null=True, blank=True)
     rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return f"Review by {self.author_name} - {self.rating} stars"

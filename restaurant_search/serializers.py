@@ -22,6 +22,7 @@ class RestaurantListSerializer(serializers.ModelSerializer):
 
 class RestaurantDetailSerializer(serializers.ModelSerializer):
     reviews = ReviewListSerializer(many=True, read_only=True)
+    images = ImageListSerializer(many=True, read_only=True)
 
     class Meta:
         model = Restaurant
