@@ -213,3 +213,15 @@ def retrieve_the_place(request, pk: int) -> Response:
     end = time.time()
     print(f"{end - start} seconds")
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+def get_top_restaurants(request) -> Response:
+
+    restaurants = Restaurant.objects.filter(address__icontains="Ukraine").order_by(
+        "-total_users_ratings"
+    )[:10]
+
+    serializer = RestaurantListSerializer(restaurants, many=True)
+
+    return Response(serializer.data, status=status.HTTP_200_OK)
