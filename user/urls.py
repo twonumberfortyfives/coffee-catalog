@@ -13,7 +13,6 @@ app_name = "user"
 router = DefaultRouter()
 router.register("my-favourites", FavouriteViewSet, basename="favourites")
 
-
 urlpatterns = [
     path("me/", ManageUserView.as_view(), name="my_info"),
     path("register/", SignUp.as_view(), name="register"),

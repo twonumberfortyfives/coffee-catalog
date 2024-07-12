@@ -1,10 +1,20 @@
+import os
+import uuid
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.utils.text import slugify
 from django.utils.translation import gettext as _
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from coffee_catalog.settings import AUTH_USER_MODEL
 from restaurant_search.models import Restaurant
+
+
+def profile_picture_file_path(instance, filename):
+    _, extension = os.path.splitext(filename)
+    filename = f"{slugify(instance.id)}-{uuid.uuid4()}{extension}"
+    return os.path.join("uploads/profile-pictures/", filename)
 
 
 class UserManager(BaseUserManager):
@@ -47,6 +57,7 @@ class User(AbstractUser):
     username = None
     email = models.EmailField(_("email address"), unique=True)
     is_verified = models.BooleanField(default=False)
+    profile_picture = models.ImageField(upload_to=profile_picture_file_path, blank=True, null=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -57,7 +68,7 @@ class User(AbstractUser):
         refresh = RefreshToken.for_user(self)
         return {
             "refresh": str(refresh),
-            "refresh": str(refresh.access_token),
+            "access": str(refresh.access_token),
         }
 
 

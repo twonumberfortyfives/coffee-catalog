@@ -5,9 +5,11 @@ from django.contrib.auth import get_user_model
 from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import generics, status, response, viewsets
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.decorators import api_view
+from rest_framework.decorators import action
 from rest_framework.generics import GenericAPIView
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -15,7 +17,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from restaurant_search.models import Review
 from restaurant_search.serializers import ReviewListSerializer
 from user.models import Favourite
-from user.serializers import UserSerializer, EmailVerificationSerializer, FavouriteListSerializer
+from user.serializers import UserSerializer, EmailVerificationSerializer, FavouriteListSerializer, \
+    ProfilePictureSerializer
 from user.utils import Util
 
 
@@ -26,9 +29,23 @@ class LoginUserView(ObtainAuthToken):
 class ManageUserView(generics.RetrieveUpdateAPIView):
     serializer_class = UserSerializer
     permission_classes = (IsAuthenticated,)
+    parser_classes = (MultiPartParser, )
 
     def get_object(self):
         return self.request.user
+
+    @action(
+        methods=["POST"],
+        detail=True,
+        url_path="upload_image",
+        permission_classes=["IsAuthenticated"]
+    )
+    def upload_image(self, request):
+        user = self.request.user
+        serializer = ProfilePictureSerializer(user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(status=status.HTTP_200_OK)
 
 
 class SignUp(GenericAPIView):
