@@ -220,7 +220,7 @@ def get_top_restaurants(request) -> Response:
 
     restaurants = Restaurant.objects.filter(address__icontains="Ukraine").order_by(
         "-total_users_ratings"
-    )[:10]
+    )[:20]
 
     serializer = RestaurantListSerializer(restaurants, many=True)
 
