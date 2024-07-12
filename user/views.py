@@ -15,6 +15,7 @@ from rest_framework.settings import api_settings
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from restaurant_search.models import Review
+from restaurant_search.permissions import IsAuthorizedAndVerifiedOrNot
 from restaurant_search.serializers import ReviewListSerializer
 from user.models import Favourite
 from user.serializers import UserSerializer, EmailVerificationSerializer, FavouriteListSerializer, \
@@ -115,7 +116,7 @@ class VerifyEmail(GenericAPIView):
 class FavouriteViewSet(viewsets.ModelViewSet):
     serializer_class = FavouriteListSerializer
     queryset = Favourite.objects.all()
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthorizedAndVerifiedOrNot,)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -128,7 +129,7 @@ class FavouriteViewSet(viewsets.ModelViewSet):
 class CreateReview(generics.CreateAPIView):
     serializer_class = ReviewListSerializer
     queryset = Review.objects.all()
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthorizedAndVerifiedOrNot,)
 
     def perform_create(self, serializer):
         full_name = f"{self.request.user.first_name} {self.request.user.last_name}"

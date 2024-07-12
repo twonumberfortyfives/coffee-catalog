@@ -6,7 +6,7 @@ class IsAuthorizedAndVerifiedOrNot(BasePermission):
         if (
             request.user.is_authenticated
             and request.user.is_verified
-            and request.method in SAFE_METHODS
+            and request.method in ("GET", "POST", "DELETE", "CREATE")
         ):
             return True
         elif request.user.is_staff:
